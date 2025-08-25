@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBox LGC</title>
+    <style>
+        /* Variables CSS pour la personnalisation */
+        :root {
+            --primary-color: #667eea;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-color: #f8fafc;
+            --text-primary: #1a202c;
+            --text-secondary: #718096;
+            --border-color: #e2e8f0;
+            --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-strong: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --animation-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Bulle de chat flottante */
+        .chat-bubble {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-strong);
+            transition: all var(--animation-speed) ease;
+            z-index: 1000;
+            animation: bounceIn 0.6s ease-out;
+        }
+
+        .chat-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.15), 0 15px 15px -5px rgba(0, 0, 0, 0.08);
+        }
+
+        .chat-bubble-icon {
+            width: 28px;
+            height: 28px;
+            fill: white;
+            transition: transform var(--animation-speed) ease;
+        }
+
+        .chat-bubble.open .chat-bubble-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Message de notification */
+        .chat-notification {
+            position: fixed;
+            bottom: 95px;
+            left: 20px;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-soft);
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+            transition: all var(--animation-speed) ease;
+            z-index: 999;
+            max-width: 200px;
+            animation: notificationPulse 3s ease-in-out infinite;
+        }
+
+        .chat-notification.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .chat-notification::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid white;
+        }
+
+        /* Container principal de la chatbox */
+        .chatbox-container {
+            position: fixed;
+            bottom: 20px;
+            left: 100px;
+            width: 350px;
+            height: 450px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: var(--shadow-strong);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: translateY(20px) scale(0.9);
+            transition: all var(--animation-speed) ease;
+            z-index: 998;
+            pointer-events: none;
+        }
+
+        .chatbox-container.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        /* Header de la chatbox */
+        .chatbox-header {
+            background: var(--primary-gradient);
+            padding: 16px 20px;
+            color: white;
+            border-radius: 20px 20px 0 0;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chatbox-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .chatbox-header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .chatbox-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .chatbox-status {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            background: #48bb78;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color var(--animation-speed) ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .close-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Zone des messages */
+        .chatbox-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: var(--secondary-color);
+            background-image: 
+                radial-gradient(circle at 20px 50px, #ffffff 2px, transparent 2px),
+                radial-gradient(circle at 40px 80px, #ffffff 1px, transparent 1px);
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 12px;
+            animation: messageSlide 0.4s ease-out;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user .message-content {
+            background: var(--primary-gradient);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.6;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message.bot .message-time {
+            text-align: left;
+        }
+
+        /* Zone de saisie */
+        .chatbox-input {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid var(--border-color);
+            border-radius: 0 0 20px 20px;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            resize: none;
+            min-height: 36px;
+            max-height: 100px;
+            transition: all var(--animation-speed) ease;
+            font-family: inherit;
+            overflow: hidden;
+        }
+
+        /* Supprimer les flèches de redimensionnement du textarea */
+        .message-input::-webkit-resizer {
+            display: none;
+        }
+
+        .message-input {
+            resize: none !important;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-button {
+            padding: 8px 16px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all var(--animation-speed) ease;
+            box-shadow: var(--shadow-soft);
+            min-width: 70px;
+            height: 36px;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Animation de frappe */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 0.85rem;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .typing-dot {
+            width: 5px;
+            height: 5px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: typingBounce 1.4s ease-in-out infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(90deg); opacity: 0.8; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes notificationPulse {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-2px) scale(1.02); }
+        }
+
+        /* Styles responsifs */
+        @media (max-width: 768px) {
+            .chatbox-container {
+                width: calc(100vw - 40px);
+                height: calc(100vh - 120px);
+                bottom: 100px;
+                left: 20px;
+                border-radius: 20px;
+            }
+
+            .chat-notification {
+                max-width: 150px;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chat-bubble {
+                bottom: 15px;
+                left: 15px;
+            }
+
+            .chat-notification {
+                bottom: 85px;
+                left: 15px;
+            }
+
+            .chatbox-container {
+                bottom: 85px;
+                left: 15px;
+                width: calc(100vw - 30px);
+                height: calc(100vh - 120px);
+            }
+        }
+
+        @media (min-width: 769px) {
+            .chatbox-container {
+                max-width: 350px;
+                max-height: 450px;
+            }
+        }
+
+        /* Scrollbar personnalisée */
+        .chatbox-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chatbox-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chatbox-messages::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 2px;
+            opacity: 0.3;
+        }
+
+        .chatbox-messages::-webkit-scrollbar-thumb:hover {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <!-- Notification de disponibilité -->
+    <div class="chat-notification" id="chatNotification">
+        👋 Besoin d'aide ? Je suis là !
+    </div>
+
+    <!-- Bulle de chat flottante -->
+    <div class="chat-bubble" id="chatBubble">
+        <svg class="chat-bubble-icon" viewBox="0 0 24 24" style="fill: none;">
+            <!-- Arrière-plan avec texture -->
+            <circle cx="12" cy="12" r="10" fill="#6BBDBF"/>
+            
+            <!-- Points de texture sur le fond -->
+            <circle cx="8" cy="8" r="0.3" fill="#5AACAE" opacity="0.6"/>
+            <circle cx="16" cy="7" r="0.2" fill="#5AACAE" opacity="0.4"/>
+            <circle cx="6" cy="14" r="0.25" fill="#5AACAE" opacity="0.5"/>
+            <circle cx="18" cy="16" r="0.2" fill="#5AACAE" opacity="0.4"/>
+            <circle cx="10" cy="18" r="0.2" fill="#5AACAE" opacity="0.3"/>
+            <circle cx="15" cy="5" r="0.15" fill="#5AACAE" opacity="0.4"/>
+            
+            <!-- Antenne -->
+            <line x1="12" y1="6.5" x2="12" y2="4.5" stroke="#1B4A4F" stroke-width="0.8" stroke-linecap="round"/>
+            <circle cx="12" cy="4.5" r="0.8" fill="none" stroke="#1B4A4F" stroke-width="0.6"/>
+            <circle cx="12" cy="4.5" r="0.3" fill="#F5F5F5"/>
+            
+            <!-- Casque/Écran du robot -->
+            <ellipse cx="12" cy="9.5" rx="5" ry="4" fill="#F5F5F5" stroke="#1B4A4F" stroke-width="1"/>
+            
+            <!-- Visage/Écran interne -->
+            <ellipse cx="12" cy="9.8" rx="3.5" ry="2.8" fill="#1B4A4F"/>
+            
+            <!-- Yeux -->
+            <ellipse cx="10.3" cy="9.2" rx="0.7" ry="0.9" fill="#F5F5F5"/>
+            <ellipse cx="13.7" cy="9.2" rx="0.7" ry="0.9" fill="#F5F5F5"/>
+            
+            <!-- Sourire -->
+            <path d="M 10 10.8 Q 12 12.2 14 10.8" stroke="#F5F5F5" stroke-width="0.6" fill="none" stroke-linecap="round"/>
+            
+            <!-- Capteurs/Oreilles -->
+            <ellipse cx="6.5" cy="9.5" rx="1" ry="1.5" fill="#6BBDBF" stroke="#1B4A4F" stroke-width="0.8"/>
+            <ellipse cx="17.5" cy="9.5" rx="1" ry="1.5" fill="#6BBDBF" stroke="#1B4A4F" stroke-width="0.8"/>
+            
+            <!-- Corps du robot -->
+            <ellipse cx="12" cy="16" rx="4" ry="3.5" fill="#F5F5F5" stroke="#1B4A4F" stroke-width="0.8"/>
+            
+            <!-- Bras -->
+            <ellipse cx="8.5" cy="15" rx="1.2" ry="2" fill="#F5F5F5" stroke="#1B4A4F" stroke-width="0.6"/>
+            <ellipse cx="15.5" cy="15" rx="1.2" ry="2" fill="#F5F5F5" stroke="#1B4A4F" stroke-width="0.6"/>
+            
+            <!-- Panneau de contrôle -->
+            <rect x="10.5" y="15.5" width="3" height="1.5" rx="0.3" fill="#6BBDBF" stroke="#1B4A4F" stroke-width="0.4"/>
+            
+            <!-- Détails du cou -->
+            <rect x="11.2" y="13" width="1.6" height="0.8" rx="0.2" fill="#6BBDBF" stroke="#1B4A4F" stroke-width="0.4"/>
+        </svg>
+    </div>
+
+    <!-- Container principal de la chatbox -->
+    <div class="chatbox-container" id="chatboxContainer">
+        <div class="chatbox-header">
+            <div class="chatbox-header-content">
+                <div class="chatbox-title">ChatBox LGC</div>
+                <div class="chatbox-status">
+                    <div class="status-indicator"></div>
+                    En ligne
+                </div>
+            </div>
+            <button class="close-button" id="closeButton">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="chatbox-messages" id="messagesContainer">
+            <div class="message bot">
+                <div class="message-content">
+                    Bonjour, je suis l'assistant de la Grande Classe. Comment puis-je vous aider aujourd'hui ?
+                    <div class="message-time" id="initialTime"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbox-input">
+            <div class="input-container">
+                <textarea 
+                    class="message-input" 
+                    id="messageInput" 
+                    placeholder="Tapez votre message..."
+                    rows="1"
+                ></textarea>
+                <button class="send-button" id="sendButton">
+                    Envoyer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class FloatingChatbox {
+            constructor() {
+                this.chatBubble = document.getElementById('chatBubble');
+                this.chatboxContainer = document.getElementById('chatboxContainer');
+                this.closeButton = document.getElementById('closeButton');
+                this.messagesContainer = document.getElementById('messagesContainer');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.chatNotification = document.getElementById('chatNotification');
+                
+                this.isOpen = false;
+                this.isTyping = false;
+                this.notificationShown = false;
+                
+                // Configuration API DeepSeek
+                this.apiKey = 'sk-553d888c4f9b4bf8af4eedd580629f3d'; // À remplacer par votre clé API
+                this.apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+                this.conversationHistory = [];
+                
+                this.init();
+                this.setupEventListeners();
+                this.setInitialTime();
+                this.showNotificationAfterDelay();
+            }
+
+            init() {
+                // Auto-resize du textarea
+                this.messageInput.addEventListener('input', this.autoResize.bind(this));
+                
+                // Extraire le contexte de la page
+                const pageContext = this.extractPageContext();
+                
+                // Message système pour l'IA avec contexte de la page
+                this.systemMessage = {
+                    role: 'system',
+                    content: `Tu es un assistant virtuel utile et amical intégré dans un site web Moodle. Réponds de manière concise et claire. Adapte ton ton au contexte et aide les utilisateurs de la meilleure façon possible.
+
+CONTEXTE DE LA PAGE ACTUELLE:
+${pageContext}
+
+Utilise ces informations pour fournir des réponses pertinentes et contextuelles aux utilisateurs. Si un utilisateur pose une question en rapport avec le contenu de la page, tu peux t'y référer directement.`
+                };
+                
+                this.conversationHistory.push(this.systemMessage);
+                
+                // Log du contexte pour debug (à supprimer en production)
+                console.log('Contexte de la page extrait:', pageContext);
+            }
+
+            extractPageContext() {
+                try {
+                    // Rechercher l'élément avec data-region="mainpage"
+                    const mainPageElement = document.querySelector('[data-region="mainpage"]');
+                    
+                    if (!mainPageElement) {
+                        // Fallback: essayer d'autres sélecteurs Moodle courants
+                        const alternativeSelectors = [
+                            '#region-main-box',
+                            '#region-main',
+                            '.region-main',
+                            'main',
+                            '[role="main"]',
+                            '.course-content',
+                            '#page-content',
+                            '.page-content'
+                        ];
+                        
+                        for (const selector of alternativeSelectors) {
+                            const element = document.querySelector(selector);
+                            if (element) {
+                                return this.cleanTextContent(element);
+                            }
+                        }
+                        
+                        return "Contenu de la page non accessible - élément principal non trouvé.";
+                    }
+                    
+                    return this.cleanTextContent(mainPageElement);
+                    
+                } catch (error) {
+                    console.error('Erreur lors de l\'extraction du contexte:', error);
+                    return "Erreur lors de l'extraction du contexte de la page.";
+                }
+            }
+
+            cleanTextContent(element) {
+                if (!element) return '';
+                
+                // Cloner l'élément pour ne pas modifier l'original
+                const clonedElement = element.cloneNode(true);
+                
+                // Supprimer les éléments indésirables
+                const elementsToRemove = [
+                    'script', 'style', 'noscript', 'iframe', 
+                    '.chatbox-container', '.chat-bubble', '.chat-notification', // Notre chatbox
+                    '[data-region="drawer"]', '.drawer', // Tiroirs Moodle
+                    '.navbar', '.nav', 'nav', // Navigation
+                    '.footer', 'footer', // Pied de page
+                    '.sidebar', '.aside', // Barres latérales
+                    '.advertisement', '.ads', // Publicités
+                ];
+                
+                elementsToRemove.forEach(selector => {
+                    const elements = clonedElement.querySelectorAll(selector);
+                    elements.forEach(el => el.remove());
+                });
+                
+                // Extraire le texte et nettoyer
+                let textContent = clonedElement.textContent || clonedElement.innerText || '';
+                
+                // Nettoyer le texte
+                textContent = textContent
+                    .replace(/\s+/g, ' ') // Normaliser les espaces
+                    .replace(/\n\s*\n/g, '\n') // Supprimer les lignes vides multiples
+                    .trim();
+                
+                // Limiter la taille du contexte pour éviter des prompts trop longs
+                const maxLength = 2000; // Limite de caractères
+                if (textContent.length > maxLength) {
+                    textContent = textContent.substring(0, maxLength) + '... [contenu tronqué]';
+                }
+                
+                return textContent || 'Aucun contenu textuel détecté sur cette page.';
+            }
+
+            setupEventListeners() {
+                // Ouvrir/fermer avec la bulle
+                this.chatBubble.addEventListener('click', () => {
+                    this.toggleChat();
+                });
+
+                // Fermer avec le bouton de fermeture
+                this.closeButton.addEventListener('click', () => {
+                    this.closeChat();
+                });
+
+                // Envoyer avec le bouton
+                this.sendButton.addEventListener('click', () => {
+                    this.sendMessage();
+                });
+
+                // Envoyer avec Entrée (Maj+Entrée pour nouvelle ligne)
+                this.messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Cacher la notification au clic
+                this.chatNotification.addEventListener('click', () => {
+                    this.hideNotification();
+                });
+            }
+
+            showNotificationAfterDelay() {
+                // Afficher la notification après 3 secondes si le chat n'est pas ouvert
+                setTimeout(() => {
+                    if (!this.isOpen && !this.notificationShown) {
+                        this.showNotification();
+                    }
+                }, 3000);
+            }
+
+            showNotification() {
+                this.chatNotification.classList.add('visible');
+                this.notificationShown = true;
+
+                // Cacher automatiquement après 10 secondes
+                setTimeout(() => {
+                    this.hideNotification();
+                }, 10000);
+            }
+
+            hideNotification() {
+                this.chatNotification.classList.remove('visible');
+            }
+
+            toggleChat() {
+                if (this.isOpen) {
+                    this.closeChat();
+                } else {
+                    this.openChat();
+                }
+            }
+
+            openChat() {
+                this.isOpen = true;
+                this.chatboxContainer.classList.add('open');
+                this.chatBubble.classList.add('open');
+                this.hideNotification();
+                
+                // Focus sur l'input après l'animation
+                setTimeout(() => {
+                    this.messageInput.focus();
+                }, 300);
+            }
+
+            closeChat() {
+                this.isOpen = false;
+                this.chatboxContainer.classList.remove('open');
+                this.chatBubble.classList.remove('open');
+            }
+
+            autoResize() {
+                this.messageInput.style.height = 'auto';
+                this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 100) + 'px';
+            }
+
+            setInitialTime() {
+                const initialTimeElement = document.getElementById('initialTime');
+                if (initialTimeElement) {
+                    initialTimeElement.textContent = this.getCurrentTime();
+                }
+            }
+
+            getCurrentTime() {
+                return new Date().toLocaleTimeString('fr-FR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            }
+
+            sendMessage() {
+                const message = this.messageInput.value.trim();
+                
+                if (!message || this.isTyping) return;
+
+                // Ajouter le message utilisateur
+                this.addMessage(message, 'user');
+                
+                // Ajouter le message à l'historique de conversation
+                this.conversationHistory.push({
+                    role: 'user',
+                    content: message
+                });
+                
+                // Vider l'input et remettre la taille
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+                this.messageInput.focus();
+
+                // Envoyer la requête à DeepSeek API
+                this.sendToDeepSeekAPI();
+            }
+
+            async sendToDeepSeekAPI() {
+                this.simulateTyping();
+                
+                try {
+                    if (!this.apiKey) {
+                        throw new Error('Clé API DeepSeek manquante');
+                    }
+
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: 'deepseek-chat',
+                            messages: this.conversationHistory.slice(-10), // Garder seulement les 10 derniers messages
+                            max_tokens: 500,
+                            temperature: 0.7,
+                            stream: false
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Erreur API: ${response.status} ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    const aiResponse = data.choices[0].message.content;
+                    
+                    // Ajouter la réponse à l'historique
+                    this.conversationHistory.push({
+                        role: 'assistant',
+                        content: aiResponse
+                    });
+                    
+                    // Afficher la réponse
+                    this.stopTyping();
+                    this.addMessage(aiResponse, 'bot');
+                    
+                } catch (error) {
+                    console.error('Erreur lors de l\'appel à l\'API DeepSeek:', error);
+                    this.stopTyping();
+                    
+                    let errorMessage = "Désolé, je rencontre des difficultés techniques. ";
+                    
+                    if (error.message.includes('Clé API')) {
+                        errorMessage += "La clé API n'est pas configurée. Veuillez contacter l'administrateur.";
+                    } else if (error.message.includes('401')) {
+                        errorMessage += "Problème d'authentification avec l'API.";
+                    } else if (error.message.includes('429')) {
+                        errorMessage += "Trop de requêtes. Veuillez patienter un moment.";
+                    } else if (error.message.includes('500')) {
+                        errorMessage += "Problème côté serveur. Réessayez dans quelques instants.";
+                    } else {
+                        errorMessage += "Veuillez réessayer dans quelques instants.";
+                    }
+                    
+                    this.addMessage(errorMessage, 'bot');
+                }
+            }
+
+            addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                messageContent.innerHTML = `
+                    ${content}
+                    <div class="message-time">${this.getCurrentTime()}</div>
+                `;
+                
+                messageDiv.appendChild(messageContent);
+                this.messagesContainer.appendChild(messageDiv);
+                
+                // Scroll vers le bas
+                this.scrollToBottom();
+            }
+
+            simulateTyping() {
+                if (this.isTyping) return;
+                
+                this.isTyping = true;
+                this.sendButton.disabled = true;
+                
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.id = 'typingIndicator';
+                typingDiv.innerHTML = `
+                    Assistant en train d'écrire...
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+                
+                this.messagesContainer.appendChild(typingDiv);
+                this.scrollToBottom();
+            }
+
+            addBotResponse() {
+                // Cette fonction est maintenant remplacée par sendToDeepSeekAPI
+                // Garde pour la compatibilité de l'API externe
+                const response = this.responses[Math.floor(Math.random() * this.responses.length)];
+                this.addMessage(response, 'bot');
+                this.isTyping = false;
+                this.sendButton.disabled = false;
+            }
+
+            stopTyping() {
+                // Supprimer l'indicateur de frappe
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                this.isTyping = false;
+                this.sendButton.disabled = false;
+            }
+
+            // Fonction pour configurer la clé API
+            setApiKey(apiKey) {
+                this.apiKey = apiKey;
+            }
+
+            // Fonction pour personnaliser le message système
+            setSystemMessage(message) {
+                this.systemMessage.content = message;
+                this.conversationHistory[0] = this.systemMessage;
+            }
+
+            // Fonction pour mettre à jour le contexte de la page
+            updatePageContext() {
+                const pageContext = this.extractPageContext();
+                this.systemMessage.content = `Tu es un assistant virtuel utile et amical intégré dans un site web Moodle. Réponds de manière concise et claire. Adapte ton ton au contexte et aide les utilisateurs de la meilleure façon possible.
+
+CONTEXTE DE LA PAGE ACTUELLE:
+${pageContext}
+
+Utilise ces informations pour fournir des réponses pertinentes et contextuelles aux utilisateurs. Si un utilisateur pose une question en rapport avec le contenu de la page, tu peux t'y référer directement.`;
+                
+                this.conversationHistory[0] = this.systemMessage;
+                console.log('Contexte de la page mis à jour:', pageContext);
+            }
+
+            // Fonction pour vider l'historique de conversation
+            clearConversation() {
+                this.conversationHistory = [this.systemMessage];
+                // Optionnel: vider aussi l'affichage
+                this.messagesContainer.innerHTML = `
+                    <div class="message bot">
+                        <div class="message-content">
+                            Bonjour, je suis l'assistant de la Grande Classe. Comment puis-je vous aider aujourd'hui ?
+                            <div class="message-time">${this.getCurrentTime()}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                }, 100);
+            }
+        }
+
+        // Initialiser la chatbox quand le DOM est chargé
+        document.addEventListener('DOMContentLoaded', () => {
+            window.chatboxInstance = new FloatingChatbox();
+        });
+
+        // API pour intégration Moodle
+        window.MoodleChatbox = {
+            // Fonction pour ouvrir/fermer le chat
+            toggleChat: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.toggleChat();
+                }
+            },
+
+            // Fonction pour ouvrir le chat
+            openChat: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.openChat();
+                }
+            },
+
+            // Fonction pour fermer le chat
+            closeChat: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.closeChat();
+                }
+            },
+            
+            // Fonction pour ajouter un message programmatiquement
+            addMessage: function(content, sender = 'bot') {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.addMessage(content, sender);
+                }
+            },
+            
+            // Fonction pour personnaliser les réponses (mode fallback)
+            setResponses: function(newResponses) {
+                if (window.chatboxInstance && Array.isArray(newResponses)) {
+                    window.chatboxInstance.responses = newResponses;
+                }
+            },
+
+            // Fonction pour afficher/cacher la notification
+            showNotification: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.showNotification();
+                }
+            },
+
+            hideNotification: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.hideNotification();
+                }
+            },
+
+            // === NOUVELLES FONCTIONS POUR API DEEPSEEK ===
+            
+            // Configurer la clé API DeepSeek
+            setApiKey: function(apiKey) {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.setApiKey(apiKey);
+                }
+            },
+
+            // Personnaliser le message système de l'IA
+            setSystemMessage: function(message) {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.setSystemMessage(message);
+                }
+            },
+
+            // Vider l'historique de conversation
+            clearConversation: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.clearConversation();
+                }
+            },
+
+            // Obtenir l'historique de conversation
+            getConversationHistory: function() {
+                if (window.chatboxInstance) {
+                    return window.chatboxInstance.conversationHistory.filter(msg => msg.role !== 'system');
+                }
+                return [];
+            },
+
+            // === NOUVELLES FONCTIONS POUR CONTEXTE DE PAGE ===
+            
+            // Mettre à jour le contexte de la page manuellement
+            updatePageContext: function() {
+                if (window.chatboxInstance) {
+                    window.chatboxInstance.updatePageContext();
+                }
+            },
+
+            // Obtenir le contexte actuel de la page
+            getPageContext: function() {
+                if (window.chatboxInstance) {
+                    return window.chatboxInstance.extractPageContext();
+                }
+                return '';
+            },
+
+            // Debug: afficher le contexte extrait dans la console
+            debugPageContext: function() {
+                if (window.chatboxInstance) {
+                    const context = window.chatboxInstance.extractPageContext();
+                    console.log('=== CONTEXTE DE LA PAGE ===');
+                    console.log(context);
+                    console.log('=== FIN DU CONTEXTE ===');
+                    return context;
+                }
+            }
+        };
+    </script>
+</body>
+</html>
